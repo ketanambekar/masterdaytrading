@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class WhatWillBeCoveredCard extends StatelessWidget {
@@ -5,49 +6,56 @@ class WhatWillBeCoveredCard extends StatelessWidget {
 
   final List<_CoveredItem> items = const [
     _CoveredItem(
-      imageUrl: 'https://media.istockphoto.com/id/2160537640/photo/robot-investment-monitoring-market-volatility-in-financial-market.webp?a=1&b=1&s=612x612&w=0&k=20&c=bAd18tMa22mxl6D01AYtjJnWlevTWAkHSBUOBXT7ScA=',
       title: 'Version 0.009 Strategy',
+      icon: Icons.track_changes,
+      gradient: LinearGradient(colors: [Color(0xFF9C27B0), Color(0xFFE91E63)]),
       bullets: [
-        'My unique trading Strategy',
-        '100 Points Target in Intraday',
-        'Entry within 30 Min of Market opening',
+        'Proprietary intraday setup',
+        '100-point target per trade',
+        'Entry within 30 mins of open',
       ],
     ),
     _CoveredItem(
-      imageUrl: 'https://media.istockphoto.com/id/2192471037/photo/business-professional-interacting-with-ai-powered-analytics-through-a-digital-interface.jpg?s=1024x1024&w=is&k=20&c=2OSRW3rSN_rJfsBRFCirqCcXRO11L0b3DFjYoHDwSmg=',
-      title: 'Heneiken Beer Strategy',
+      title: 'Heineken Beer Strategy',
+      icon: Icons.local_bar,
+      gradient: LinearGradient(colors: [Color(0xFF00BCD4), Color(0xFF3F51B5)]),
       bullets: [
-        'For high intraday gains (500 points targets)',
-        'Trend Entry/Exit: Enter before trends, exit as they end',
+        'Catch major intraday moves (500+ pts)',
+        'Enter before trend starts, exit precisely',
       ],
     ),
     _CoveredItem(
-      imageUrl: 'https://media.istockphoto.com/id/2160537640/photo/robot-investment-monitoring-market-volatility-in-financial-market.webp?a=1&b=1&s=612x612&w=0&k=20&c=bAd18tMa22mxl6D01AYtjJnWlevTWAkHSBUOBXT7ScA=',
-      title: 'Emotion Control',
+      title: 'Emotional Mastery',
+      icon: Icons.psychology,
+      gradient: LinearGradient(colors: [Color(0xFFFF5722), Color(0xFFF44336)]),
       bullets: [
-        'How to control your emotions in market hours',
-        'How to Stop Over Trading and End your day with Profit',
+        'Stay calm in volatile markets',
+        'Stop revenge trading, lock in gains',
       ],
     ),
     _CoveredItem(
-      imageUrl: 'https://media.istockphoto.com/id/878460096/photo/using-a-smartphone-and-pc-to-look-at-financial-data.jpg?s=1024x1024&w=is&k=20&c=Rs7WdnL1yf2SYH3uDvw-Zp4cy36BeVF9CeIl6ig1xV4=',
       title: 'Risk Management',
+      icon: Icons.security,
+      gradient: LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF388E3C)]),
       bullets: [
-        'Learn to protect your capital',
+        'Shield your capital from big losses',
       ],
     ),
     _CoveredItem(
-      imageUrl: 'https://media.istockphoto.com/id/2160537640/photo/robot-investment-monitoring-market-volatility-in-financial-market.webp?a=1&b=1&s=612x612&w=0&k=20&c=bAd18tMa22mxl6D01AYtjJnWlevTWAkHSBUOBXT7ScA=',
-      title: 'Backtesting',
+      title: 'Backtesting Results',
+      icon: Icons.query_stats,
+      gradient: LinearGradient(colors: [Color(0xFF2196F3), Color(0xFF3F51B5)]),
       bullets: [
-        'Results for the entire October 2024 month',
+        'October 2024 results analyzed',
+        'How to validate any strategy',
       ],
     ),
     _CoveredItem(
-      imageUrl: 'https://media.istockphoto.com/id/2160537640/photo/robot-investment-monitoring-market-volatility-in-financial-market.webp?a=1&b=1&s=612x612&w=0&k=20&c=bAd18tMa22mxl6D01AYtjJnWlevTWAkHSBUOBXT7ScA=',
-      title: 'Live Doubt-Clearing Sessions',
+      title: 'Live Q&A Zooms',
+      icon: Icons.live_help,
+      gradient: LinearGradient(colors: [Color(0xFFFFC107), Color(0xFFFF9800)]),
       bullets: [
-        'Monthly Zoom meetings to address your queries',
+        'Monthly live doubt-clearing sessions',
       ],
     ),
   ];
@@ -57,172 +65,207 @@ class WhatWillBeCoveredCard extends StatelessWidget {
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Card(
-        elevation: 6,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'What Will Be Covered?',
-                style: TextStyle(
-                  fontSize: isMobile ? 18 : 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                height: 4,
-                width: 60,
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Grid/List of Topics
-              ...items.map((e) => Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: _CoveredBlock(item: e),
-              )),
-
-              const SizedBox(height: 20),
-
-              // CTA
-              Center(
-                child: Column(
-                  children: [
-                    const Text(
-                      'Start Learning today @',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 6),
-                    RichText(
-                      text: const TextSpan(
-                        style: TextStyle(fontSize: 20),
-                        children: [
-                          TextSpan(
-                            text: '₹7500 ',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                          TextSpan(
-                            text: ' ₹999',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        'Offer Ends in: 00:00 mins',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            ],
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Header
+          Text(
+            '🚀 What You Will Learn',
+            style: TextStyle(
+              fontSize: isMobile ? 24 : 30,
+              fontWeight: FontWeight.w800,
+              color: Colors.deepPurple.shade700,
+            ),
           ),
-        ),
+          const SizedBox(height: 8),
+          Container(
+            width: 60,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.deepPurple.shade400,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          const SizedBox(height: 36),
+
+          // Items with animation wrappers (future-ready)
+          ...items.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: _CoveredBlock(item: item, isMobile: isMobile),
+          )),
+
+          const SizedBox(height: 40),
+          _CTASection(isMobile: isMobile),
+        ],
       ),
     );
   }
 }
 
 class _CoveredItem {
-  final String imageUrl;
   final String title;
+  final IconData icon;
   final List<String> bullets;
+  final Gradient gradient;
 
   const _CoveredItem({
-    required this.imageUrl,
     required this.title,
+    required this.icon,
     required this.bullets,
+    required this.gradient,
   });
 }
 
 class _CoveredBlock extends StatelessWidget {
   final _CoveredItem item;
+  final bool isMobile;
 
-  const _CoveredBlock({required this.item});
+  const _CoveredBlock({required this.item, required this.isMobile});
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Image
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            item.imageUrl,
-            width: isMobile ? 60 : 80,
-            height: isMobile ? 60 : 80,
-            fit: BoxFit.cover,
-          ),
-        ),
-        const SizedBox(width: 14),
-
-        // Content
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item.title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: item.gradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          )
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(item.icon, size: isMobile ? 28 : 34, color: Colors.white),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isMobile ? 16 : 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              ...item.bullets.map(
-                    (b) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
+                const SizedBox(height: 8),
+                ...item.bullets.map((b) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "• ",
-                        style: TextStyle(fontSize: 14),
-                      ),
+                      const Icon(Icons.check_circle, size: 16, color: Colors.white),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           b,
-                          style: const TextStyle(fontSize: 14, height: 1.3),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ],
+                )),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+class _CTASection extends StatelessWidget {
+  final bool isMobile;
+
+  const _CTASection({required this.isMobile});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          colors: [Colors.deepPurple.shade50, Colors.white],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: Colors.deepPurple.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.deepPurple.withOpacity(0.1),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            '🔥 Limited-Time Offer',
+            style: TextStyle(
+              fontSize: isMobile ? 20 : 22,
+              fontWeight: FontWeight.w700,
+              color: Colors.deepPurple,
+            ),
           ),
-        )
-      ],
+          const SizedBox(height: 10),
+          RichText(
+            text: TextSpan(
+              style: TextStyle(fontSize: isMobile ? 24 : 28),
+              children: const [
+                TextSpan(
+                  text: '₹7500 ',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+                TextSpan(
+                  text: ' ₹999',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.redAccent,
+              borderRadius: BorderRadius.circular(40),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withOpacity(0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                )
+              ],
+            ),
+            child: const Text(
+              'Offer Ends in: 00:00 mins',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

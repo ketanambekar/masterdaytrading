@@ -23,106 +23,113 @@ class AboutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 600;
+    return LayoutBuilder(builder: (context, constraints) {
+      final isMobile = constraints.maxWidth < 600;
 
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-            elevation: 10,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Profile Image
-                  CircleAvatar(
-                    radius: isMobile ? 50 : 70,
-                    backgroundImage: NetworkImage(imageUrl),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Name and Title
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontSize: isMobile ? 22 : 26,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: isMobile ? 14 : 16,
-                      color: Colors.black87,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Divider(color: Colors.grey.shade300),
-                  const SizedBox(height: 12),
-
-                  isMobile
-                      ? Column(
-                    children: [
-                      _infoSection(),
-                      const SizedBox(height: 20),
-                      _priceSection(),
-                    ],
-                  )
-                      : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _infoSection()),
-                      const SizedBox(width: 40),
-                      Expanded(child: _priceSection()),
-                    ],
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Shake Buy Button
-                  ShakeAnimationWidget(
-                    child: ElevatedButton.icon(
-                      onPressed: onBuy,
-                      icon: const Icon(Icons.shopping_cart),
-                      label: const Text("Buy Now"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 40,
-                          vertical: 18,
-                        ),
-                        textStyle: const TextStyle(fontSize: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Profile Image
+                CircleAvatar(
+                  radius: isMobile ? 50 : 70,
+                  backgroundImage: NetworkImage(imageUrl),
+                ),
+                const SizedBox(height: 16),
+
+                // Name and Title
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: isMobile ? 24 : 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: isMobile ? 14 : 16,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Divider(color: Colors.grey.shade300),
+                const SizedBox(height: 12),
+
+                // Sections
+                isMobile
+                    ? Column(
+                  children: [
+                    _infoSection(),
+                    const SizedBox(height: 24),
+                    _priceSection(),
+                  ],
+                )
+                    : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _infoSection()),
+                    const SizedBox(width: 40),
+                    Expanded(child: _priceSection()),
+                  ],
+                ),
+
+                const SizedBox(height: 30),
+
+                // CTA Button
+                ShakeAnimationWidget(
+                  child: ElevatedButton.icon(
+                    onPressed: onBuy,
+                    icon: const Icon(Icons.flash_on),
+                    label: const Text("Buy Now"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 40,
+                        vertical: 18,
+                      ),
+                      textStyle: const TextStyle(fontSize: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 8,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    });
   }
 
   Widget _infoSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _infoRow(Icons.play_circle_fill, "Recorded", "Start Anytime"),
-        _infoRow(Icons.live_tv, "Live Doubt Session", "Every Month"),
-        _infoRow(Icons.language, "Language", "Hindi"),
-        _infoRow(Icons.schedule, "Duration", "2+ hrs"),
+        _infoRow(Icons.play_circle_fill_rounded, "Recorded Class", "Start Anytime"),
+        _infoRow(Icons.live_tv_rounded, "Live Doubt Sessions", "Every Month"),
+        _infoRow(Icons.language_rounded, "Language", "Hindi"),
+        _infoRow(Icons.schedule_rounded, "Duration", "2+ hours"),
       ],
     );
   }
@@ -131,47 +138,50 @@ class AboutCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
+        const Text(
           'Unlock the Secret Strategies',
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 18,
-            color: Colors.grey.shade800,
+            fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         RichText(
           text: TextSpan(
-            style: const TextStyle(fontSize: 20),
+            style: const TextStyle(fontSize: 20, fontFamily: 'Montserrat'),
             children: [
               TextSpan(
-                text: '$pricingOld ',
+                text: '₹$pricingOld ',
                 style: const TextStyle(
                   color: Colors.grey,
                   decoration: TextDecoration.lineThrough,
                 ),
               ),
               TextSpan(
-                text: ' ₹$pricingNew',
-                style: const TextStyle(
-                  color: Colors.green,
+                text: '₹$pricingNew',
+                style: TextStyle(
+                  color: Colors.green.shade700,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.redAccent,
-            borderRadius: BorderRadius.circular(20),
+            color: Colors.red.shade600,
+            borderRadius: BorderRadius.circular(30),
           ),
           child: Text(
             'Offer Ends in: $countdown mins',
             style: const TextStyle(
               color: Colors.white,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              letterSpacing: 0.5,
             ),
           ),
         ),
@@ -181,16 +191,33 @@ class AboutCard extends StatelessWidget {
 
   Widget _infoRow(IconData icon, String title, String subtitle) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Colors.blueGrey),
+          Icon(icon, size: 22, color: Colors.blueAccent),
           const SizedBox(width: 10),
-          Text(
-            '$title: ',
-            style: const TextStyle(fontWeight: FontWeight.bold),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                text: "$title: ",
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                  fontSize: 14,
+                ),
+                children: [
+                  TextSpan(
+                    text: subtitle,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.normal,
+                      color: Colors.black87,
+                    ),
+                  )
+                ],
+              ),
+            ),
           ),
-          Text(subtitle),
         ],
       ),
     );

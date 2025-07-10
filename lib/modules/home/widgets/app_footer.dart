@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class AppFooter extends StatelessWidget {
   const AppFooter({super.key});
@@ -9,64 +10,98 @@ class AppFooter extends StatelessWidget {
 
     return Container(
       color: Colors.grey.shade100,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 36),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Logo or Title
+          // Brand Name
           Text(
-            "Master Day Trading",
+            "📈 Master Day Trading",
             style: TextStyle(
-              fontSize: isMobile ? 18 : 22,
+              fontSize: isMobile ? 20 : 24,
               fontWeight: FontWeight.bold,
               color: Colors.deepPurple,
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // Disclaimer Text
-          Text(
-            'Disclaimer: The information provided is for educational purposes only and should not be construed as investment advice. '
-                'We make no warranties or representations, express or implied, on products and services offered through the platform. '
-                'Past performance is not indicative of future returns. Please consider your specific investment requirements, risk tolerance, '
-                'goal, investment time frame, risk and reward as well as the cost associated with the investment before investing, or designing a portfolio '
-                'that suits your needs. Performance and returns of any investment portfolio can neither be predicted nor guaranteed. '
-                'Investments in securities markets are subject to market risks. Read all related documents carefully before investing.',
-            style: TextStyle(
-              fontSize: isMobile ? 12 : 14,
-              color: Colors.black87,
-              height: 1.4,
-            ),
-            textAlign: TextAlign.justify,
+          // Social Media Icons
+          Wrap(
+            spacing: 20,
+            alignment: WrapAlignment.center,
+            children: [
+              IconButton(
+                onPressed: () {},
+                icon: const FaIcon(FontAwesomeIcons.instagram),
+                tooltip: 'Instagram',
+              ),
+              IconButton(
+                onPressed: () {},
+                icon: const FaIcon(FontAwesomeIcons.twitter),
+                tooltip: 'Twitter',
+              ),
+              IconButton(
+                onPressed: () {},
+                icon: const FaIcon(FontAwesomeIcons.youtube),
+                tooltip: 'YouTube',
+              ),
+              IconButton(
+                onPressed: () {},
+                icon: const FaIcon(FontAwesomeIcons.linkedin),
+                tooltip: 'LinkedIn',
+              ),
+            ],
           ),
 
           const SizedBox(height: 24),
 
-          // Contact and Rights
+          // Disclaimer
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: Text(
+              'Disclaimer: The information provided is for educational purposes only and should not be construed as investment advice. '
+              'We make no warranties or representations, express or implied, on products and services offered through the platform. '
+              'Past performance is not indicative of future returns. Please consider your specific investment requirements, risk tolerance, '
+              'goal, investment time frame, and the cost associated before investing. Investments are subject to market risks.',
+              style: TextStyle(
+                fontSize: isMobile ? 12 : 14,
+                color: Colors.black87,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.justify,
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // Contact Info + Legal
           Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
                 '📧 course@masterdaytrading.com',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
-                '© 2025 Master Day Trading Private Limited',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                '© 2025 Master Day Trading Pvt. Ltd.',
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
               ),
               const SizedBox(height: 4),
               InkWell(
                 onTap: () {
-                  // handle privacy tap
+                  // Add your privacy policy navigation
                 },
                 child: const Text(
                   'Privacy Policy',
                   style: TextStyle(
                     color: Colors.blueAccent,
-                    decoration: TextDecoration.underline,
                     fontSize: 13,
+                    decoration: TextDecoration.underline,
                   ),
                 ),
               ),

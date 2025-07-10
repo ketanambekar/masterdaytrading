@@ -104,7 +104,7 @@ class _BottomOfferBarState extends State<BottomOfferBar>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 54, vertical: 24),
+                            horizontal: 24, vertical: 24),
                       ),
                       child: const Text(
                         "Buy Now",

@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b30a76e1-c951-4a90-81da-e70a192a7b0f" name="Changes" comment="just added space" />
+    <list default="true" id="b30a76e1-c951-4a90-81da-e70a192a7b0f" name="Changes" comment="1.0.0+2" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -55,11 +55,20 @@
       <option name="project" value="LOCAL" />
       <updated>1752151060233</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="1.0.0+2">
+      <option name="closed" value="true" />
+      <created>1752154846501</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1752154846501</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="just added space" />
-    <option name="LAST_COMMIT_MESSAGE" value="just added space" />
+    <MESSAGE value="1.0.0+2" />
+    <option name="LAST_COMMIT_MESSAGE" value="1.0.0+2" />
   </component>
 </project>

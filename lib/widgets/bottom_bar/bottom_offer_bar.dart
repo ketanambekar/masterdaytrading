@@ -50,24 +50,18 @@ class _BottomOfferBarState extends State<BottomOfferBar>
             border: Border(top: BorderSide(color: Colors.grey.shade300)),
           ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Text Content
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min, // Prevent overflow
                   children: [
-                    const Text(
-                      "₹10,000.00",
-                      style: TextStyle(
-                        decoration: TextDecoration.lineThrough,
-                        color: Colors.grey,
-                        fontSize: 18,
-                      ),
-                    ),
                     const SizedBox(height: 4),
                     const Text(
-                      "Now ₹ 999.00",
+                      "Ad's Will Be Displayed here",
                       style: TextStyle(
                           color: Colors.green,
                           fontWeight: FontWeight.w600,
@@ -94,26 +88,26 @@ class _BottomOfferBarState extends State<BottomOfferBar>
               ),
 
               // Shaking Button
-              AnimatedBuilder(
-                animation: _shakeAnimation,
-                builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(_shakeAnimation.value, 0),
-                    child: ElevatedButton(
-                      onPressed: widget.onPressed,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 24),
-                      ),
-                      child: const Text(
-                        "Buy Now",
-                        style: TextStyle(color: Colors.white, fontSize: 22),
-                      ),
-                    ),
-                  );
-                },
-              ),
+              // AnimatedBuilder(
+              //   animation: _shakeAnimation,
+              //   builder: (context, child) {
+              //     return Transform.translate(
+              //       offset: Offset(_shakeAnimation.value, 0),
+              //       child: ElevatedButton(
+              //         onPressed: widget.onPressed,
+              //         style: ElevatedButton.styleFrom(
+              //           backgroundColor: Colors.green,
+              //           padding: const EdgeInsets.symmetric(
+              //               horizontal: 24, vertical: 24),
+              //         ),
+              //         child: const Text(
+              //           "Buy Now",
+              //           style: TextStyle(color: Colors.white, fontSize: 22),
+              //         ),
+              //       ),
+              //     );
+              //   },
+              // ),
             ],
           ),
         ));

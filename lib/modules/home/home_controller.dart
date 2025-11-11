@@ -1,6 +1,11 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:masterdaytrading/constants/app_assets_constants.dart';
 import 'package:masterdaytrading/services/locale_service.dart';
 
 class HomeController extends GetxController {
@@ -8,10 +13,14 @@ class HomeController extends GetxController {
   final ScrollController scrollController = ScrollController();
   final RxBool showAppBar = true.obs;
   ScrollDirection _lastDirection = ScrollDirection.idle;
-
+  var searchSymbol = ''.obs;
+  var allItems = <Map<String, dynamic>>[].obs;
+  var filteredItems = <Map<String, dynamic>>[].obs;
+  var selectedItem = Rxn<Map<String, dynamic>>();
   @override
   void onInit() {
     super.onInit();
+    loadJsonData();
     scrollController.addListener(() {
       final currentDirection = scrollController.position.userScrollDirection;
 
@@ -40,5 +49,37 @@ class HomeController extends GetxController {
     final index = supported.indexOf(current);
     final nextLang = supported[(index + 1) % supported.length];
     _localeService.changeLocale(nextLang);
+  }
+
+  Future<void> loadJsonData() async {
+    final String response =
+    await rootBundle.loadString(AppAssets.completeJson);
+    final List data = await compute(parseJsonInBackground, response);
+    allItems.assignAll(data.cast<Map<String, dynamic>>());
+  }
+
+  List<dynamic> parseJsonInBackground(String response) {
+    return json.decode(response);
+  }
+
+  void search(String query) {
+    if (query.isEmpty) {
+      filteredItems.clear();
+      return;
+    }
+
+    final results = allItems.where((item) {
+      final name = item['name'].toString().toLowerCase();
+      final symbol = item['trading_symbol'].toString().toLowerCase();
+      return name.contains(query.toLowerCase()) ||
+          symbol.contains(query.toLowerCase());
+    }).toList();
+
+    filteredItems.assignAll(results);
+  }
+
+  void selectItem(Map<String, dynamic> item) {
+    selectedItem.value = item;
+    filteredItems.clear(); // hide dropdown after selection
   }
 }

@@ -1,6 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:masterdaytrading/modules/home/home_controller.dart';
 import 'package:masterdaytrading/services/buy_now/check_out_pop_up.dart';
+import 'package:masterdaytrading/widgets/app_input/app_input.dart';
+import 'package:masterdaytrading/widgets/app_input/app_search_input.dart';
 
 class IntroBenefitsWidget extends StatelessWidget {
   final List<String> benefits;
@@ -34,7 +38,7 @@ class IntroBenefitsWidget extends StatelessWidget {
                   children: [
                     // Heading
                     Text(
-                      '🚀 Transform Your Trading Career',
+                      'Master Your Day Trading',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: isMobile ? 24 : 32,
@@ -54,18 +58,32 @@ class IntroBenefitsWidget extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 36),
-
-                    // Benefit List
-                    Wrap(
-                      spacing: 20,
-                      runSpacing: 20,
-                      alignment: WrapAlignment.center,
-                      children: benefits
-                          .map((b) => _BenefitTile(
-                        text: b,
-                        isMobile: isMobile,
-                      ))
-                          .toList(),
+                    Column(
+                      children: [
+                        AppSearchInput(
+                          label: 'Search Instrument',
+                          controller: Get.find<HomeController>(),
+                        ),
+                        const SizedBox(height: 20),
+                        Obx(() {
+                          final item =
+                              Get.find<HomeController>().selectedItem.value;
+                          if (item == null) {
+                            return const Text('No item selected');
+                          }
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'Selected:\n${item.toString()}',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          );
+                        }),
+                      ],
                     ),
                     const SizedBox(height: 40),
 
@@ -82,7 +100,7 @@ class IntroBenefitsWidget extends StatelessWidget {
                       ),
                       onPressed: showCheckoutSheet,
                       child: const Text(
-                        'Get Instant Access',
+                        'Show Charts',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

@@ -65,24 +65,25 @@ class IntroBenefitsWidget extends StatelessWidget {
                           controller: Get.find<HomeController>(),
                         ),
                         const SizedBox(height: 20),
-                        Obx(() {
-                          final item =
-                              Get.find<HomeController>().selectedItem.value;
-                          if (item == null) {
-                            return const Text('No item selected');
-                          }
-                          return Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              'Selected:\n${item.toString()}',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          );
-                        }),
+                        // Obx(() {
+                        //   final item =
+                        //       Get.find<HomeController>().selectedItem.value;
+                        //   if (item == null) {
+                        //     return const Text('No item selected');
+                        //   }
+                        //   return Container(
+                        //     padding: const EdgeInsets.all(12),
+                        //     decoration: BoxDecoration(
+                        //       border: Border.all(color: Colors.grey.shade300),
+                        //       borderRadius: BorderRadius.circular(12),
+                        //     ),
+                        //     child: Text(
+                        //       'Selected:\n${item.toString()}',
+                        //       style: const TextStyle(
+                        //           fontSize: 14, color: Colors.white),
+                        //     ),
+                        //   );
+                        // }),
                       ],
                     ),
                     const SizedBox(height: 40),

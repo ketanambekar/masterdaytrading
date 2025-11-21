@@ -1,43 +1,204 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
+  <title>Candlestick Replay Chart</title>
   <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-  <style>
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      background: #000;
-      height: 100%;
-      overflow: hidden;
-    }
 
-    #chart {
-      height: 100%;
-    }
+  <style>
+    body { margin: 0; background: #111; color: #fff; font-family: system-ui, Arial; }
+    #chart { width: 100%; height: 420px; }
   </style>
 </head>
 
 <body>
-  <div id="chart"></div>
-  <script>
-    const chart = LightweightCharts.createChart(document.body, { width: 400, height: 300 });
-    const lineSeries = chart.addSeries(LightweightCharts.LineSeries);
-    lineSeries.setData([
-      { time: '2019-04-11', value: 80.01 },
-      { time: '2019-04-12', value: 96.63 },
-      { time: '2019-04-13', value: 76.64 },
-      { time: '2019-04-14', value: 81.89 },
-      { time: '2019-04-15', value: 74.43 },
-      { time: '2019-04-16', value: 80.01 },
-      { time: '2019-04-17', value: 96.63 },
-      { time: '2019-04-18', value: 76.64 },
-      { time: '2019-04-19', value: 81.89 },
-      { time: '2019-04-20', value: 74.43 },
-    ]);
-  </script>
-</body>
 
+<div id="chart"></div>
+
+<script>
+  /* ===========================
+       INTERNAL STATE
+     =========================== */
+  let fullData = [];
+  let replayRows = [];
+  let replayPos = 0;
+  let replayTimer = null;
+  let replaySpeedMs = 300;
+  let replayStartDate = null;   // yyyy-mm-dd
+  let replayPaused = false;
+
+  /* ===========================
+        CHART SETUP
+     =========================== */
+  const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+    layout: { background: { color: '#000' }, textColor: '#fff' },
+    grid: { vertLines: { color: '#222' }, horzLines: { color: '#222' } },
+    timeScale: { borderColor: '#444',timeVisible: true, secondsVisible: false  }
+  });
+
+  const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
+    upColor: '#0f0', downColor: '#f00',
+    borderUpColor: '#0f0', borderDownColor: '#f00',
+    wickUpColor: '#0f0', wickDownColor: '#f00'
+  });
+
+  const volumeSeries = chart.addSeries(
+  LightweightCharts.HistogramSeries,
+  {
+    priceScaleId: 'vol',        // UNIQUE ID → different pane
+    priceFormat: { type: 'volume' },
+    color: '#26a69a',
+    scaleMargins: {
+      top: 0.1,     // pushes candles up
+      bottom: 0,
+    },
+  }
+);
+
+  /* ===========================
+        REPLAY LOOP
+     =========================== */
+  function runReplayLoop() {
+    if (replayTimer) clearInterval(replayTimer);
+
+    replayTimer = setInterval(() => {
+      if (replayPaused) return;
+
+      if (replayPos >= replayRows.length) {
+        clearInterval(replayTimer);
+        replayTimer = null;
+        return;
+      }
+
+      const row = replayRows[replayPos];
+
+      candleSeries.update(row);
+
+      volumeSeries.update({
+        time: row.time,
+        value: row.volume,
+        color: row.close >= row.open ? 'rgba(0,150,136,0.6)' : 'rgba(255,82,82,0.6)'
+      });
+
+      chart.timeScale().scrollToRealTime();
+      replayPos++;
+    }, replaySpeedMs);
+  }
+
+  /* ===========================
+        START REPLAY INTERNAL
+     =========================== */
+  function startReplayInternal() {
+    if (!replayStartDate) return;
+
+    // 🔥 FIX: Convert startDate string → UNIX seconds
+    const startUnix = Math.floor(new Date(replayStartDate).getTime() / 1000);
+
+    // 🔥 Filter correct subset
+    replayRows = fullData.filter(r => r.time >= startUnix);
+
+    if (!replayRows.length) return;
+
+    candleSeries.setData([]);
+    volumeSeries.setData([]);
+
+    replayPos = 0;
+    replayPaused = false;
+
+    if (replayTimer) clearInterval(replayTimer);
+    runReplayLoop();
+  }
+
+  /* ===========================
+       PAUSE / RESUME / STOP
+     =========================== */
+  function pauseReplayInternal() { replayPaused = true; }
+
+  function resumeReplayInternal() {
+    replayPaused = false;
+    if (!replayTimer) runReplayLoop();
+  }
+
+  function stopReplayInternal() {
+    if (replayTimer) clearInterval(replayTimer);
+    replayTimer = null;
+    replayPos = 0;
+    replayPaused = false;
+  }
+
+  /* ===========================
+     EXPOSED API FOR FLUTTER
+     =========================== */
+
+  // Set full OHLC dataset
+  window.addData = function(data) {
+    if (!Array.isArray(data)) return;
+
+    fullData = data.slice();
+
+    candleSeries.setData(fullData);
+    volumeSeries.setData(
+      fullData.map(c => ({
+        time: c.time,
+        value: c.volume,
+        color: c.close >= c.open ? 'rgba(0,150,136,0.6)' : 'rgba(255,82,82,0.6)'
+      }))
+    );
+  };
+
+  // JSON helper
+  window.addDataFromJson = function(json) {
+    try { window.addData(JSON.parse(json)); } catch(e){}
+  };
+
+  // Set start date (string)
+  window.setStartDate = function(dateStr) {
+    replayStartDate = dateStr;
+  };
+
+  // Play / Resume
+  window.startReplay = function() {
+    if (replayPaused) {
+      resumeReplayInternal();
+      return;
+    }
+    startReplayInternal();
+  };
+
+  window.pauseReplay = function() { pauseReplayInternal(); };
+  window.stopReplay = function() { stopReplayInternal(); };
+
+  // Change speed in ms
+  window.setReplaySpeed = function(ms) {
+    const n = Number(ms);
+    if (!n || n <= 0) return;
+    replaySpeedMs = n;
+
+    if (replayTimer) {
+      clearInterval(replayTimer);
+      replayTimer = null;
+      runReplayLoop();
+    }
+  };
+
+  /* ===========================
+        FLUTTER WEB MESSAGE
+     =========================== */
+  window.addEventListener('message', ev => {
+    const msg = ev.data;
+    if (!msg || !msg.type) return;
+
+    switch (msg.type) {
+      case 'addData': window.addData(msg.data); break;
+      case 'addDataJson': window.addDataFromJson(msg.json); break;
+      case 'setStartDate': window.setStartDate(msg.date); break;
+      case 'startReplay': window.startReplay(); break;
+      case 'pauseReplay': window.pauseReplay(); break;
+      case 'stopReplay': window.stopReplay(); break;
+      case 'setReplaySpeed': window.setReplaySpeed(msg.ms); break;
+    }
+  });
+
+</script>
+</body>
 </html>

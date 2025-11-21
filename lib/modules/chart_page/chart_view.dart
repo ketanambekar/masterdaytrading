@@ -1,122 +1,177 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, undefined_prefixed_name
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:masterdaytrading/services/api_controller.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-
-// Web-only imports
-// ignore: conditional_uri_does_not_exist
-import 'dart:html' as html show IFrameElement;
-import 'dart:ui_web' as ui; // ✅ this fixes platformViewRegistry undefined error
-
 import 'chart_controller.dart';
 
 class ChartPage extends StatelessWidget {
-  const ChartPage({super.key});
+  ChartPage({super.key});
+
+  final chart = Get.put(ChartController());
+  final api = Get.put(ApiController());
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(ChartController());
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text('Realtime Chart', style: TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: kIsWeb ? _buildWebChart(controller) : _buildMobileChart(controller),
-    );
-  }
-
-  /// ✅ Mobile (Android/iOS)
-  Widget _buildMobileChart(ChartController controller) {
-    return WebViewWidget(
-      controller: WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..loadHtmlString(_chartHTML('hi')),
-    );
-  }
-
-  /// ✅ Web
-  Widget _buildWebChart(ChartController controller) {
-    final viewId = 'chart-view-${DateTime.now().millisecondsSinceEpoch}';
-
-    // register iframe view only for web
-    ui.platformViewRegistry.registerViewFactory(viewId, (int _) {
-      final iframe = html.IFrameElement()
-        ..width = '100%'
-        ..height = '100%'
-        ..style.border = 'none'
-        ..srcdoc = _chartHTML('hi');
-      return iframe;
+    // Fetch default 1-day data on load
+    Future.delayed(Duration(milliseconds: 300), () {
+      if (!api.loadedOnce) {
+        api.loadedOnce = true;
+        api.setDefault1Day();
+      }
     });
 
-    return HtmlElementView(viewType: viewId);
+    return Scaffold(
+      backgroundColor: const Color(0xff0d0d0f),
+      appBar: AppBar(
+        backgroundColor: const Color(0xff111113),
+        title: const Text("Candle Replay", style: TextStyle(color: Colors.white)),
+      ),
+
+      body: Column(
+        children: [
+          Expanded(
+            child: GetBuilder<ChartController>(
+              builder: (_) {
+                if (GetPlatform.isWeb) {
+                  return HtmlElementView(viewType: chart.viewId);
+                } else {
+                  return WebViewWidget(controller: chart.mobileController!);
+                }
+              },
+            ),
+          ),
+
+          _bottomPanel(context),
+        ],
+      ),
+    );
   }
 
-  /// ✅ Lightweight Charts HTML
-  String _chartHTML(String symbol) {
-    return '''
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-    <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        background: #000;
-        height: 100%;
-        overflow: hidden;
-      }
-      #chart {
-        height: 100%;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="chart"></div>
-    <script>
-      const chart = LightweightCharts.createChart(document.getElementById('chart'), {
-        layout: { background: { color: '#000000' }, textColor: '#FFFFFF' },
-        grid: { vertLines: { color: '#222' }, horzLines: { color: '#222' } },
-        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-        timeScale: { borderColor: '#71649C' },
-      });
+  // ---------------------------------------------------------
+  // BEAUTIFUL TRADINGVIEW-LIKE BOTTOM PANEL
+  // ---------------------------------------------------------
+  Widget _bottomPanel(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: const BoxDecoration(
+        color: Color(0xff1a1a1d),
+        border: Border(top: BorderSide(color: Colors.white12, width: 0.5)),
+      ),
 
-      const candleSeries = chart.addCandlestickSeries({
-        upColor: '#00FF00',
-        downColor: '#FF3333',
-        borderDownColor: '#FF3333',
-        borderUpColor: '#00FF00',
-        wickDownColor: '#FF3333',
-        wickUpColor: '#00FF00',
-      });
+      child: Column(
+        children: [
+          // ---------- DATE PICKERS ----------
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _dateSelector("From", api.fromDate, () => api.pickFromDate(context)),
+              _dateSelector("To", api.toDate, () => api.pickToDate(context)),
+            ],
+          ),
 
-      candleSeries.setData([
-        { time: '2025-11-01', open: 80, high: 96, low: 75, close: 90 },
-        { time: '2025-11-02', open: 90, high: 105, low: 85, close: 95 },
-        { time: '2025-11-03', open: 95, high: 120, low: 90, close: 110 },
-      ]);
+          const SizedBox(height: 12),
 
-      let lastClose = 110;
-      setInterval(() => {
-        lastClose += (Math.random() - 0.5) * 5;
-        const lastTime = Date.now() / 1000;
-        candleSeries.update({
-          time: Math.floor(lastTime),
-          open: lastClose - 2,
-          high: lastClose + 2,
-          low: lastClose - 4,
-          close: lastClose,
-        });
-      }, 2000);
-    </script>
-  </body>
-</html>
-    ''';
+          // ---------- UNIT + INTERVAL + FETCH ----------
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _styledDropdown(
+                api.unit.value,
+                api.allowedUnits,
+                    (v) => api.updateUnit(v!),
+              ),
+
+              _styledDropdown(
+                api.interval.value.toString(),
+                api.getIntervalsForUnit().map((e) => e.toString()).toList(),
+                    (v) => api.interval.value = int.parse(v!),
+              ),
+
+              _actionButton("Fetch", api.fetchData),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // ---------- REPLAY BUTTONS ----------
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _actionButton("▶ Start", chart.startReplay),
+              _actionButton("⏸ Pause", chart.pauseReplay),
+              _actionButton("⏹ Stop", chart.stopReplay),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------
+  // WIDGETS
+  // ---------------------------------------------------------
+
+  Widget _dateSelector(String title, RxString date, VoidCallback onTap) {
+    return Column(
+      children: [
+        Text(title, style: const TextStyle(color: Colors.white70)),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: onTap,
+          child: Obx(() => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xff262628),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white24),
+            ),
+            child: Text(
+              date.value.isEmpty ? "Select" : date.value,
+              style: const TextStyle(color: Colors.white),
+            ),
+          )),
+        ),
+      ],
+    );
+  }
+
+  Widget _styledDropdown(
+      String value, List<String> options, ValueChanged<String?> onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xff262628),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: DropdownButton<String>(
+        dropdownColor: const Color(0xff2c2c2e),
+        underline: Container(),
+        value: value,
+        style: const TextStyle(color: Colors.white),
+        items: options
+            .map((e) => DropdownMenuItem(
+          value: e,
+          child: Text(e, style: const TextStyle(color: Colors.white)),
+        ))
+            .toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _actionButton(String text, VoidCallback onPressed) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xff333336),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      onPressed: onPressed,
+      child: Text(text),
+    );
   }
 }

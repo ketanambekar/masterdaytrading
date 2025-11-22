@@ -114,7 +114,8 @@ class AppSearchInput extends StatelessWidget {
                   onTap: () {
                     controller.selectItem(item);
                     textController.text = item['name'] ?? '';
-                    Get.toNamed(Routes.chartPage);
+                    Get.toNamed(Routes.chartPage, arguments: {"selectedSymbol": item});
+                    print(item);
                     FocusScope.of(context).unfocus();
                   },
                 );

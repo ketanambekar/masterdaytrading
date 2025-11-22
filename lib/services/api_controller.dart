@@ -74,7 +74,7 @@ class ApiController extends GetxController {
       Get.snackbar("Error", "Select from/to dates");
       return;
     }
-
+print("Get.arguments:>${Get.arguments}");
     try {
       List<Map<String, dynamic>> candles = await api.getCandles(
         key: "NSE_EQ|INE848E01016",

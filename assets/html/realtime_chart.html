@@ -2,203 +2,400 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Candlestick Replay Chart</title>
+  <title>Candlestick Replay Chart (with indicators)</title>
   <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { margin: 0; background: #111; color: #fff; font-family: system-ui, Arial; }
-    #chart { width: 100%; height: 420px; }
+    html, body, #chart {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      background: #000;
+      font-family: system-ui, Arial;
+    }
+    #chart { position: absolute; left:0; right:0; top:0; bottom:0; }
   </style>
 </head>
-
 <body>
-
 <div id="chart"></div>
 
 <script>
   /* ===========================
-       INTERNAL STATE
-     =========================== */
-  let fullData = [];
+     Internal state
+  ============================*/
+  let fullData = [];            // array of { time: <unix seconds>, open, high, low, close, volume }
   let replayRows = [];
   let replayPos = 0;
   let replayTimer = null;
   let replaySpeedMs = 300;
-  let replayStartDate = null;   // yyyy-mm-dd
+  let replayStartDate = null;   // 'YYYY-MM-DD' or similar
   let replayPaused = false;
 
+  // Indicators
+  let indicatorSeries = {};    // map id -> series or array of series
+  let activeIndicators = [];   // list of ids e.g. ["sma20","ema50","vwap","rsi14","bb20"]
+
   /* ===========================
-        CHART SETUP
-     =========================== */
+     Chart setup
+  ============================*/
   const chart = LightweightCharts.createChart(document.getElementById('chart'), {
     layout: { background: { color: '#000' }, textColor: '#fff' },
     grid: { vertLines: { color: '#222' }, horzLines: { color: '#222' } },
-    timeScale: { borderColor: '#444',timeVisible: true, secondsVisible: false  }
+    rightPriceScale: { borderVisible: false },
+    timeScale: { borderColor: '#444', timeVisible: true, secondsVisible: true },
+    localization: { timeFormatter: (time) => {
+      // default lightweight-charts formatter uses user's timezone; keep as-is
+      return String(time);
+    }}
   });
 
   const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
-    upColor: '#0f0', downColor: '#f00',
-    borderUpColor: '#0f0', borderDownColor: '#f00',
-    wickUpColor: '#0f0', wickDownColor: '#f00'
+    upColor: '#0f0', downColor: '#f55',
+    borderUpColor: '#0f0', borderDownColor: '#f55',
+    wickUpColor: '#0f0', wickDownColor: '#f55'
   });
 
-  const volumeSeries = chart.addSeries(
-  LightweightCharts.HistogramSeries,
-  {
-    priceScaleId: 'vol',        // UNIQUE ID → different pane
+  // volume in its own (separate) scale
+  const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
     priceFormat: { type: 'volume' },
-    color: '#26a69a',
-    scaleMargins: {
-      top: 0.1,     // pushes candles up
-      bottom: 0,
-    },
-  }
-);
+    priceScaleId: 'volume',
+    scaleMargins: { top: 0.85, bottom: 0 },
+  });
 
   /* ===========================
-        REPLAY LOOP
-     =========================== */
+     Indicator helpers
+     - id naming conventions supported:
+       "sma" or "sma20" -> default 20 if no number
+       "ema" or "ema20"
+       "rsi" or "rsi14"
+       "vwap"
+       "bb" or "bb20" (default mult=2)
+  ============================*/
+
+  function parseIndicatorId(id) {
+    // returns { base: 'sma'|'ema'|'rsi'|'vwap'|'bb', period: number|null, mult: number|null }
+    const base = (id || '').toLowerCase();
+    if (!base) return null;
+    // extract number if present
+    const numMatch = base.match(/(\d+)/);
+    const period = numMatch ? parseInt(numMatch[1], 10) : null;
+    if (base.startsWith('sma')) return { base: 'sma', period: period || 20, mult: null };
+    if (base.startsWith('ema')) return { base: 'ema', period: period || 20, mult: null };
+    if (base.startsWith('rsi')) return { base: 'rsi', period: period || 14, mult: null };
+    if (base === 'vwap') return { base: 'vwap', period: null, mult: null };
+    if (base.startsWith('bb')) return { base: 'bb', period: period || 20, mult: 2 };
+    return null;
+  }
+
+  function calculateSMA(data, period) {
+    if (data.length < period) return [];
+    const out = [];
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) {
+      sum += data[i].close;
+      if (i >= period) sum -= data[i - period].close;
+      if (i >= period - 1) {
+        out.push({ time: data[i].time, value: sum / period });
+      }
+    }
+    return out;
+  }
+
+  function calculateEMA(data, period) {
+    if (data.length < 1) return [];
+    const k = 2 / (period + 1);
+    const out = [];
+    // start EMA with first close (or simple average of first period)
+    let ema = data[0].close;
+    out.push({ time: data[0].time, value: ema });
+    for (let i = 1; i < data.length; i++) {
+      ema = data[i].close * k + ema * (1 - k);
+      out.push({ time: data[i].time, value: ema });
+    }
+    // If we prefer to return length-aligned result (same index as SMA start), caller can slice.
+    return out;
+  }
+
+  function calculateVWAP(data) {
+    let cumulativePV = 0;
+    let cumulativeV = 0;
+    const out = [];
+    for (let i = 0; i < data.length; i++) {
+      const typical = (data[i].high + data[i].low + data[i].close) / 3;
+      cumulativePV += typical * (data[i].volume || 0);
+      cumulativeV += (data[i].volume || 0);
+      const value = cumulativeV ? cumulativePV / cumulativeV : typical;
+      out.push({ time: data[i].time, value });
+    }
+    return out;
+  }
+
+  function calculateBB(data, period, mult) {
+    if (data.length < period) return { upper: [], middle: [], lower: [] };
+    const upper = [], middle = [], lower = [];
+    for (let i = period - 1; i < data.length; i++) {
+      let sum = 0;
+      for (let j = i - period + 1; j <= i; j++) sum += data[j].close;
+      const mean = sum / period;
+      let variance = 0;
+      for (let j = i - period + 1; j <= i; j++) variance += Math.pow(data[j].close - mean, 2);
+      variance /= period;
+      const std = Math.sqrt(variance);
+      upper.push({ time: data[i].time, value: mean + mult * std });
+      middle.push({ time: data[i].time, value: mean });
+      lower.push({ time: data[i].time, value: mean - mult * std });
+    }
+    return { upper, middle, lower };
+  }
+
+  function calculateRSI(data, period) {
+    if (data.length < period + 1) return [];
+    const out = [];
+    let gains = 0, losses = 0;
+    // first avg gain/loss for initial period
+    for (let i = 1; i <= period; i++) {
+      const change = data[i].close - data[i - 1].close;
+      if (change >= 0) gains += change;
+      else losses += -change;
+    }
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+    let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+    out.push({ time: data[period].time, value: 100 - (100 / (1 + rs)) });
+    for (let i = period + 1; i < data.length; i++) {
+      const change = data[i].close - data[i - 1].close;
+      const gain = Math.max(0, change);
+      const loss = Math.max(0, -change);
+      avgGain = (avgGain * (period - 1) + gain) / period;
+      avgLoss = (avgLoss * (period - 1) + loss) / period;
+      rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+      out.push({ time: data[i].time, value: 100 - (100 / (1 + rs)) });
+    }
+    return out;
+  }
+
+  /* ===========================
+     Draw / remove indicator
+  ============================*/
+  function drawIndicator(rawId) {
+    const parsed = parseIndicatorId(rawId);
+    if (!parsed) return;
+
+    // ensure we remove if exists (toggle behavior)
+    if (indicatorSeries[rawId]) {
+      // If it's an array (BB), remove all
+      const s = indicatorSeries[rawId];
+      if (Array.isArray(s)) {
+        s.forEach(x => chart.removeSeries(x));
+      } else {
+        chart.removeSeries(s);
+      }
+      delete indicatorSeries[rawId];
+      activeIndicators = activeIndicators.filter(x => x !== rawId);
+      return;
+    }
+
+    // create series according to type
+    if (parsed.base === 'sma') {
+      const data = calculateSMA(fullData, parsed.period);
+      const series = chart.addSeries(LightweightCharts.LineSeries, { color: 'yellow', lineWidth: 1.5 });
+      series.setData(data);
+      indicatorSeries[rawId] = series;
+      activeIndicators.push(rawId);
+      return;
+    }
+
+    if (parsed.base === 'ema') {
+      const fullEma = calculateEMA(fullData, parsed.period);
+      // Align EMA length with fullData so plot doesn't start too early: we can use fullEma as-is
+      const series = chart.addSeries(LightweightCharts.LineSeries, { color: 'cyan', lineWidth: 1.5 });
+      series.setData(fullEma);
+      indicatorSeries[rawId] = series;
+      activeIndicators.push(rawId);
+      return;
+    }
+
+    if (parsed.base === 'vwap') {
+      const data = calculateVWAP(fullData);
+      const series = chart.addSeries(LightweightCharts.LineSeries, { color: 'orange', lineWidth: 1.5 });
+      series.setData(data);
+      indicatorSeries[rawId] = series;
+      activeIndicators.push(rawId);
+      return;
+    }
+
+    if (parsed.base === 'bb') {
+      const res = calculateBB(fullData, parsed.period, parsed.mult);
+      // create three line series
+      const up = chart.addSeries(LightweightCharts.LineSeries, { color: '#ffa500', lineWidth: 1 });
+      const mid = chart.addSeries(LightweightCharts.LineSeries, { color: '#999', lineWidth: 1 });
+      const low = chart.addSeries(LightweightCharts.LineSeries, { color: '#ffa500', lineWidth: 1 });
+      up.setData(res.upper);
+      mid.setData(res.middle);
+      low.setData(res.lower);
+      indicatorSeries[rawId] = [up, mid, low];
+      activeIndicators.push(rawId);
+      return;
+    }
+
+    if (parsed.base === 'rsi') {
+      const data = calculateRSI(fullData, parsed.period);
+      // RSI should be its own scale/pane
+      const rsiSeries = chart.addSeries(LightweightCharts.LineSeries, {
+        color: '#ff69b4',
+        lineWidth: 1.5,
+        priceScaleId: 'rsi',
+      });
+      // create a dedicated price scale for rsi (if not exists — adding series with unique id creates it)
+      rsiSeries.setData(data);
+      indicatorSeries[rawId] = rsiSeries;
+      activeIndicators.push(rawId);
+      return;
+    }
+  }
+
+  function refreshIndicators() {
+    // remove all existing indicator series
+    Object.keys(indicatorSeries).forEach(k => {
+      const s = indicatorSeries[k];
+      if (!s) return;
+      if (Array.isArray(s)) s.forEach(x => chart.removeSeries(x));
+      else chart.removeSeries(s);
+    });
+    indicatorSeries = {};
+    // re-draw activeIndicators
+    const toReapply = activeIndicators.slice();
+    activeIndicators = [];
+    toReapply.forEach(id => drawIndicator(id));
+  }
+
+  /* ===========================
+     Replay engine
+  ============================*/
   function runReplayLoop() {
     if (replayTimer) clearInterval(replayTimer);
-
     replayTimer = setInterval(() => {
       if (replayPaused) return;
-
       if (replayPos >= replayRows.length) {
         clearInterval(replayTimer);
         replayTimer = null;
         return;
       }
-
       const row = replayRows[replayPos];
-
       candleSeries.update(row);
-
       volumeSeries.update({
         time: row.time,
         value: row.volume,
-        color: row.close >= row.open ? 'rgba(0,150,136,0.6)' : 'rgba(255,82,82,0.6)'
+        color: row.close >= row.open ? '#0f0' : '#f55'
       });
-
-      chart.timeScale().scrollToRealTime();
       replayPos++;
     }, replaySpeedMs);
   }
 
-  /* ===========================
-        START REPLAY INTERNAL
-     =========================== */
   function startReplayInternal() {
     if (!replayStartDate) return;
-
-    // 🔥 FIX: Convert startDate string → UNIX seconds
+    // startUnix from provided date string -> beginning of that date (local)
     const startUnix = Math.floor(new Date(replayStartDate).getTime() / 1000);
-
-    // 🔥 Filter correct subset
     replayRows = fullData.filter(r => r.time >= startUnix);
-
     if (!replayRows.length) return;
-
-    candleSeries.setData([]);
+    candleSeries.setData([]); // clear for one-by-one updates
+    // optionally clear volume too so it updates one-by-one
     volumeSeries.setData([]);
-
     replayPos = 0;
     replayPaused = false;
-
-    if (replayTimer) clearInterval(replayTimer);
     runReplayLoop();
   }
 
-  /* ===========================
-       PAUSE / RESUME / STOP
-     =========================== */
   function pauseReplayInternal() { replayPaused = true; }
-
-  function resumeReplayInternal() {
-    replayPaused = false;
-    if (!replayTimer) runReplayLoop();
-  }
-
-  function stopReplayInternal() {
-    if (replayTimer) clearInterval(replayTimer);
-    replayTimer = null;
-    replayPos = 0;
-    replayPaused = false;
-  }
+  function resumeReplayInternal() { replayPaused = false; if (!replayTimer) runReplayLoop(); }
+  function stopReplayInternal() { if (replayTimer) clearInterval(replayTimer); replayTimer = null; replayPos = 0; replayPaused = false; }
 
   /* ===========================
-     EXPOSED API FOR FLUTTER
-     =========================== */
+        Public API (JS & postMessage)
+     ============================*/
 
-  // Set full OHLC dataset
+  // expects array of objects where time is UNIX seconds (number)
   window.addData = function(data) {
     if (!Array.isArray(data)) return;
-
     fullData = data.slice();
+    // ensure times are numbers — if strings exist try to convert safely
+    fullData = fullData.map(item => {
+      const copy = Object.assign({}, item);
+      // if time is a string ISO, convert to unix seconds
+      if (typeof copy.time === 'string') {
+        const dt = new Date(copy.time);
+        if (!isNaN(dt.getTime())) copy.time = Math.floor(dt.getTime() / 1000);
+      }
+      copy.time = Number(copy.time);
+      return copy;
+    });
 
     candleSeries.setData(fullData);
-    volumeSeries.setData(
-      fullData.map(c => ({
-        time: c.time,
-        value: c.volume,
-        color: c.close >= c.open ? 'rgba(0,150,136,0.6)' : 'rgba(255,82,82,0.6)'
-      }))
-    );
+    volumeSeries.setData(fullData.map(c => ({
+      time: c.time,
+      value: c.volume || 0,
+      color: c.close >= c.open ? '#0f0' : '#f55'
+    })));
+    // refresh indicators (recalculate on new data)
+    refreshIndicators();
   };
 
-  // JSON helper
   window.addDataFromJson = function(json) {
-    try { window.addData(JSON.parse(json)); } catch(e){}
+    try { const parsed = typeof json === 'string' ? JSON.parse(json) : json; window.addData(parsed); } catch(e) { console.error(e); }
   };
 
-  // Set start date (string)
-  window.setStartDate = function(dateStr) {
-    replayStartDate = dateStr;
-  };
-
-  // Play / Resume
-  window.startReplay = function() {
-    if (replayPaused) {
-      resumeReplayInternal();
-      return;
-    }
-    startReplayInternal();
-  };
-
+  window.setStartDate = function(d) { replayStartDate = d; };
+  window.startReplay = function() { if (replayPaused) resumeReplayInternal(); else startReplayInternal(); };
   window.pauseReplay = function() { pauseReplayInternal(); };
   window.stopReplay = function() { stopReplayInternal(); };
+  window.setReplaySpeed = function(ms) { const n = Number(ms); if (Number.isFinite(n) && n > 0) { replaySpeedMs = n; if (replayTimer) { clearInterval(replayTimer); runReplayLoop(); } } };
 
-  // Change speed in ms
-  window.setReplaySpeed = function(ms) {
-    const n = Number(ms);
-    if (!n || n <= 0) return;
-    replaySpeedMs = n;
-
-    if (replayTimer) {
-      clearInterval(replayTimer);
-      replayTimer = null;
-      runReplayLoop();
+  // indicator controls (also callable from Flutter via postMessage)
+  window.addIndicator = function(id) {
+    if (!id) return;
+    id = String(id).toLowerCase();
+    if (!activeIndicators.includes(id)) {
+      activeIndicators.push(id);
+      drawIndicator(id);
+    } else {
+      // if already present, toggle (remove)
+      drawIndicator(id); // drawIndicator checks indicatorSeries and will remove if exists
     }
   };
 
-  /* ===========================
-        FLUTTER WEB MESSAGE
-     =========================== */
+  window.removeIndicator = function(id) {
+    if (!id) return;
+    id = String(id).toLowerCase();
+    if (indicatorSeries[id]) {
+      const s = indicatorSeries[id];
+      if (Array.isArray(s)) s.forEach(x => chart.removeSeries(x));
+      else chart.removeSeries(s);
+      delete indicatorSeries[id];
+    }
+    activeIndicators = activeIndicators.filter(x => x !== id);
+  };
+
+  // listen for window.postMessage (for Flutter web iframe usage)
   window.addEventListener('message', ev => {
     const msg = ev.data;
     if (!msg || !msg.type) return;
-
-    switch (msg.type) {
-      case 'addData': window.addData(msg.data); break;
-      case 'addDataJson': window.addDataFromJson(msg.json); break;
-      case 'setStartDate': window.setStartDate(msg.date); break;
-      case 'startReplay': window.startReplay(); break;
-      case 'pauseReplay': window.pauseReplay(); break;
-      case 'stopReplay': window.stopReplay(); break;
-      case 'setReplaySpeed': window.setReplaySpeed(msg.ms); break;
+    try {
+      switch (msg.type) {
+        case 'addData': window.addData(msg.data); break;
+        case 'addDataJson': window.addDataFromJson(msg.json); break;
+        case 'setStartDate': window.setStartDate(msg.date); break;
+        case 'startReplay': window.startReplay(); break;
+        case 'pauseReplay': window.pauseReplay(); break;
+        case 'stopReplay': window.stopReplay(); break;
+        case 'setReplaySpeed': window.setReplaySpeed(msg.ms); break;
+        case 'addIndicator': window.addIndicator(msg.indicator || msg.id); break;
+        case 'removeIndicator': window.removeIndicator(msg.indicator || msg.id); break;
+      }
+    } catch (e) {
+      console.error('message handler error', e);
     }
   });
-
 </script>
 </body>
 </html>

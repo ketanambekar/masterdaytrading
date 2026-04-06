@@ -67,6 +67,14 @@ a {
   padding: 1.6rem 0 3rem;
 }
 
+.chart-page-shell {
+  min-height: 100dvh;
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
 .hero-card,
 .replay-shell {
   background: var(--panel);
@@ -75,6 +83,14 @@ a {
   padding: clamp(1rem, 1.2vw + 0.75rem, 1.5rem);
   backdrop-filter: blur(6px);
   box-shadow: var(--shadow-lg);
+}
+
+.replay-shell {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .hero-card {
@@ -191,7 +207,8 @@ h1 {
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.9rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.7rem;
+  flex-shrink: 0;
 }
 
 .page-title {
@@ -204,6 +221,46 @@ h1 {
   display: grid;
   place-items: center;
   color: var(--muted);
+}
+
+.chart-with-ads {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) 170px;
+  gap: 0.9rem;
+}
+
+.chart-center {
+  min-width: 0;
+  min-height: 0;
+}
+
+.ad-rail {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ad-title {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ad-box {
+  flex: 1;
+  min-height: 0;
+  border: 1px dashed rgba(246, 161, 26, 0.5);
+  border-radius: var(--radius-md);
+  background: rgba(246, 161, 26, 0.08);
+  color: #ffd79a;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
 }
 
 .replay-header {
@@ -220,9 +277,9 @@ h1 {
 
 .chart-wrap {
   width: 100%;
-  height: min(64vh, 620px);
-  min-height: 320px;
-  margin: 1rem 0;
+  flex: 1;
+  min-height: 220px;
+  margin: 0.75rem 0;
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--line);
@@ -272,6 +329,7 @@ h1 {
   gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .speed-select {
@@ -291,10 +349,11 @@ h1 {
 }
 
 .ticker-strip {
-  margin-top: 1rem;
+  margin-top: 0.7rem;
   display: grid;
-  grid-template-columns: repeat(4, minmax(70px, 1fr));
+  grid-template-columns: repeat(5, minmax(70px, 1fr));
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .ticker-strip span {
@@ -324,8 +383,8 @@ h1 {
     grid-template-columns: repeat(3, minmax(120px, 1fr));
   }
 
-  .chart-wrap {
-    height: min(56vh, 480px);
+  .chart-with-ads {
+    grid-template-columns: 124px minmax(0, 1fr) 124px;
   }
 }
 
@@ -350,6 +409,14 @@ h1 {
     grid-column: 1 / -1;
   }
 
+  .chart-with-ads {
+    grid-template-columns: 1fr;
+  }
+
+  .ad-rail {
+    display: none;
+  }
+
   .control-row .btn {
     flex: 1 1 calc(50% - 0.4rem);
     text-align: center;
@@ -362,10 +429,6 @@ h1 {
 
   .speed-select select {
     flex: 1;
-  }
-
-  .chart-wrap {
-    height: 360px;
   }
 
   .ticker-strip {

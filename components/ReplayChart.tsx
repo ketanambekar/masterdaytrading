@@ -6,6 +6,7 @@ import {
   type CandlestickData,
   type IChartApi,
   type ISeriesApi,
+  type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
 
@@ -69,18 +70,6 @@ export default function ReplayChart() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const previousHtmlOverflow = document.documentElement.style.overflow;
-    const previousBodyOverflow = document.body.style.overflow;
-    document.documentElement.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.documentElement.style.overflow = previousHtmlOverflow;
-      document.body.style.overflow = previousBodyOverflow;
-    };
-  }, []);
-
-  useEffect(() => {
     if (!containerRef.current) return;
 
     const chart = createChart(containerRef.current, {
@@ -102,14 +91,17 @@ export default function ReplayChart() {
       },
       localization: {
         locale: "en-IN",
-        timeFormatter: (time) => {
+        timeFormatter: (time: Time) => {
           if (typeof time === "number") {
             return formatIstLabel(time as UTCTimestamp);
           }
 
-          const asUnix = Math.floor(
-            Date.UTC(time.year, time.month - 1, time.day) / 1000,
-          ) as UTCTimestamp;
+          if (typeof time === "string") {
+            const unix = Math.floor(new Date(time).getTime() / 1000) as UTCTimestamp;
+            return formatIstLabel(unix);
+          }
+
+          const asUnix = Math.floor(Date.UTC(time.year, time.month - 1, time.day) / 1000) as UTCTimestamp;
           return formatIstLabel(asUnix);
         },
       },

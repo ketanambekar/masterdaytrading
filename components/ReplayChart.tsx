@@ -26,7 +26,21 @@ const UNIT_INTERVALS: Record<string, number[]> = {
 };
 
 function formatDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(date);
+}
+
+function formatIstLabel(time: UTCTimestamp): string {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(Number(time) * 1000));
 }
 
 export default function ReplayChart() {
@@ -55,6 +69,18 @@ export default function ReplayChart() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!containerRef.current) return;
 
     const chart = createChart(containerRef.current, {
@@ -73,6 +99,19 @@ export default function ReplayChart() {
       timeScale: {
         borderColor: "rgba(207,214,223,0.20)",
         timeVisible: true,
+      },
+      localization: {
+        locale: "en-IN",
+        timeFormatter: (time) => {
+          if (typeof time === "number") {
+            return formatIstLabel(time as UTCTimestamp);
+          }
+
+          const asUnix = Math.floor(
+            Date.UTC(time.year, time.month - 1, time.day) / 1000,
+          ) as UTCTimestamp;
+          return formatIstLabel(asUnix);
+        },
       },
       crosshair: {
         vertLine: { color: "#f7a623", width: 1 },
@@ -202,7 +241,7 @@ export default function ReplayChart() {
   }, [allowedIntervals, interval]);
 
   return (
-    <section className="replay-shell">
+    <section className="replay-shell" aria-live="polite">
       <header className="replay-header">
         <div>
           <p className="eyebrow">Historical Replay</p>
@@ -213,7 +252,10 @@ export default function ReplayChart() {
         </p>
       </header>
 
-      <div className="filter-grid">
+      <form className="filter-grid" onSubmit={(e) => {
+        e.preventDefault();
+        void fetchHistoricalData();
+      }}>
         <label>
           Instrument
           <select value={instrumentKey} onChange={(e) => setInstrumentKey(e.target.value)}>
@@ -252,16 +294,16 @@ export default function ReplayChart() {
           To
           <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
         </label>
-        <button className="btn btn-primary" onClick={() => void fetchHistoricalData()} disabled={loading}>
+        <button className="btn btn-primary filter-submit" type="submit" disabled={loading}>
           {loading ? "Loading..." : "Fetch Historical"}
         </button>
-      </div>
+      </form>
 
       {error ? <p className="error-banner">{error}</p> : null}
 
       <div className="chart-wrap" ref={containerRef} />
 
-      <div className="control-row">
+      <div className="control-row" role="group" aria-label="Replay controls">
         <button
           className="btn btn-primary"
           onClick={() => setIsPlaying((p) => !p)}
@@ -303,6 +345,7 @@ export default function ReplayChart() {
       </div>
 
       <footer className="ticker-strip">
+        <span>T: {latest ? formatIstLabel(latest.time as UTCTimestamp) : "-"}</span>
         <span>O: {latest?.open ?? "-"}</span>
         <span>H: {latest?.high ?? "-"}</span>
         <span>L: {latest?.low ?? "-"}</span>

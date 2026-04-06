@@ -10,7 +10,16 @@ const ReplayChart = dynamic(() => import("@/components/ReplayChart"), {
   ),
 });
 
-export default function ChartPage() {
+type ChartPageProps = {
+  searchParams?: {
+    instrumentKey?: string;
+    instrumentLabel?: string;
+  };
+};
+
+export default function ChartPage({ searchParams }: ChartPageProps) {
+  const initialInstrumentKey = searchParams?.instrumentKey?.trim() || "NSE_EQ|INE848E01016";
+
   return (
     <main className="chart-page-shell">
       <nav className="top-nav" aria-label="Primary">
@@ -30,7 +39,7 @@ export default function ChartPage() {
         </aside>
 
         <div className="chart-center">
-          <ReplayChart />
+          <ReplayChart key={initialInstrumentKey} initialInstrumentKey={initialInstrumentKey} />
         </div>
 
         <aside className="ad-rail" aria-label="Right ad slot">

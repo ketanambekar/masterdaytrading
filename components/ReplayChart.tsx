@@ -5,18 +5,17 @@ import {
   createChart,
   type CandlestickData,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
+  type LineData,
+  type LineStyle,
+  type MouseEventParams,
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { FALLBACK_INSTRUMENTS, parseCompleteInstruments, type InstrumentItem } from "@/lib/instruments";
 
 const SPEEDS = [1, 2, 4, 8];
-const INSTRUMENTS = [
-  { label: "Reliance", key: "NSE_EQ|INE848E01016" },
-  { label: "TCS", key: "NSE_EQ|INE467B01029" },
-  { label: "Infosys", key: "NSE_EQ|INE009A01021" },
-  { label: "HDFC Bank", key: "NSE_EQ|INE040A01034" },
-];
 
 const UNIT_INTERVALS: Record<string, number[]> = {
   minutes: [1, 3, 5, 15, 30, 60],
@@ -44,10 +43,68 @@ function formatIstLabel(time: UTCTimestamp): string {
   }).format(new Date(Number(time) * 1000));
 }
 
-export default function ReplayChart() {
+function calculateSma(
+  data: CandlestickData<UTCTimestamp>[],
+  period: number,
+): LineData<Time>[] {
+  if (data.length < period) return [];
+
+  const out: LineData<Time>[] = [];
+  for (let i = period - 1; i < data.length; i += 1) {
+    let sum = 0;
+    for (let j = i - period + 1; j <= i; j += 1) {
+      sum += data[j].close;
+    }
+
+    out.push({
+      time: data[i].time,
+      value: Number((sum / period).toFixed(2)),
+    });
+  }
+
+  return out;
+}
+
+function calculateEma(
+  data: CandlestickData<UTCTimestamp>[],
+  period: number,
+): LineData<Time>[] {
+  if (!data.length) return [];
+
+  const out: LineData<Time>[] = [];
+  const multiplier = 2 / (period + 1);
+  let ema = data[0].close;
+
+  for (let i = 0; i < data.length; i += 1) {
+    ema = i === 0 ? data[i].close : (data[i].close - ema) * multiplier + ema;
+
+    if (i >= period - 1) {
+      out.push({
+        time: data[i].time,
+        value: Number(ema.toFixed(2)),
+      });
+    }
+  }
+
+  return out;
+}
+
+type DrawingMode = "none" | "trend" | "hline";
+
+type ReplayChartProps = {
+  initialInstrumentKey?: string;
+};
+
+export default function ReplayChart({ initialInstrumentKey }: ReplayChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const smaSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const emaSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const trendLinesRef = useRef<Array<ISeriesApi<"Line">>>([]);
+  const horizontalLinesRef = useRef<IPriceLine[]>([]);
+  const trendStartRef = useRef<{ time: Time; price: number } | null>(null);
+  const drawingModeRef = useRef<DrawingMode>("none");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const defaultToDate = useMemo(() => formatDate(new Date()), []);
@@ -58,16 +115,60 @@ export default function ReplayChart() {
   }, []);
 
   const [candles, setCandles] = useState<CandlestickData<UTCTimestamp>[]>([]);
+  const [instruments, setInstruments] = useState<InstrumentItem[]>(FALLBACK_INSTRUMENTS);
   const [cursor, setCursor] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [instrumentKey, setInstrumentKey] = useState(INSTRUMENTS[0].key);
+  const [instrumentKey, setInstrumentKey] = useState(initialInstrumentKey ?? FALLBACK_INSTRUMENTS[0].key);
   const [unit, setUnit] = useState("minutes");
   const [interval, setIntervalValue] = useState(5);
   const [fromDate, setFromDate] = useState(defaultFromDate);
   const [toDate, setToDate] = useState(defaultToDate);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSma, setShowSma] = useState(true);
+  const [showEma, setShowEma] = useState(false);
+  const [drawingMode, setDrawingMode] = useState<DrawingMode>("none");
+
+  useEffect(() => {
+    drawingModeRef.current = drawingMode;
+  }, [drawingMode]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadInstruments = async () => {
+      try {
+        const response = await fetch("/assets/complete.json", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = (await response.json()) as unknown;
+        if (cancelled) return;
+        const parsed = parseCompleteInstruments(payload);
+        setInstruments(parsed);
+      } catch {
+        // Keep fallback list.
+      }
+    };
+
+    void loadInstruments();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!initialInstrumentKey) return;
+    setInstrumentKey(initialInstrumentKey);
+  }, [initialInstrumentKey]);
+
+  useEffect(() => {
+    if (!instruments.length) return;
+    const exists = instruments.some((item) => item.key === instrumentKey);
+    if (!exists) {
+      setInstrumentKey(instruments[0].key);
+    }
+  }, [instrumentKey, instruments]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -123,10 +224,57 @@ export default function ReplayChart() {
     chartRef.current = chart;
     seriesRef.current = series;
 
+    const onChartClick = (param: MouseEventParams<Time>) => {
+      if (!seriesRef.current || !param.time || !param.point) return;
+      const price = seriesRef.current.coordinateToPrice(param.point.y);
+      if (price === null || price === undefined) return;
+
+      if (drawingModeRef.current === "hline") {
+        const line = seriesRef.current.createPriceLine({
+          price,
+          color: "#74b9ff",
+          lineWidth: 1,
+          lineStyle: 2 as LineStyle,
+          axisLabelVisible: true,
+          title: "H",
+        });
+        horizontalLinesRef.current.push(line);
+        return;
+      }
+
+      if (drawingModeRef.current === "trend") {
+        if (!trendStartRef.current) {
+          trendStartRef.current = { time: param.time, price };
+          return;
+        }
+
+        const trendLine = chart.addLineSeries({
+          color: "#9b59b6",
+          lineWidth: 2,
+          priceLineVisible: false,
+          crosshairMarkerVisible: false,
+        });
+
+        trendLine.setData([
+          {
+            time: trendStartRef.current.time,
+            value: trendStartRef.current.price,
+          },
+          { time: param.time, value: price },
+        ]);
+
+        trendLinesRef.current.push(trendLine);
+        trendStartRef.current = null;
+      }
+    };
+
+    chart.subscribeClick(onChartClick);
+
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      chart.unsubscribeClick(onChartClick);
       chart.remove();
     };
   }, []);
@@ -136,6 +284,42 @@ export default function ReplayChart() {
     seriesRef.current.setData(candles.slice(0, cursor));
     chartRef.current?.timeScale().fitContent();
   }, [candles, cursor]);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    const visible = candles.slice(0, cursor);
+
+    if (showSma) {
+      if (!smaSeriesRef.current) {
+        smaSeriesRef.current = chartRef.current.addLineSeries({
+          color: "#f7a623",
+          lineWidth: 2,
+          priceLineVisible: false,
+          crosshairMarkerVisible: false,
+        });
+      }
+      smaSeriesRef.current.setData(calculateSma(visible, 20));
+    } else if (smaSeriesRef.current) {
+      chartRef.current.removeSeries(smaSeriesRef.current);
+      smaSeriesRef.current = null;
+    }
+
+    if (showEma) {
+      if (!emaSeriesRef.current) {
+        emaSeriesRef.current = chartRef.current.addLineSeries({
+          color: "#00d2d3",
+          lineWidth: 2,
+          priceLineVisible: false,
+          crosshairMarkerVisible: false,
+        });
+      }
+      emaSeriesRef.current.setData(calculateEma(visible, 20));
+    } else if (emaSeriesRef.current) {
+      chartRef.current.removeSeries(emaSeriesRef.current);
+      emaSeriesRef.current = null;
+    }
+  }, [candles, cursor, showSma, showEma]);
 
   const fetchHistoricalData = async () => {
     setLoading(true);
@@ -179,7 +363,7 @@ export default function ReplayChart() {
       }));
 
       setCandles(nextCandles);
-      setCursor(Math.min(25, nextCandles.length));
+      setCursor(Math.min(15, nextCandles.length));
     } catch (err) {
       setCandles([]);
       setCursor(0);
@@ -232,6 +416,22 @@ export default function ReplayChart() {
     }
   }, [allowedIntervals, interval]);
 
+  const clearDrawings = () => {
+    if (!chartRef.current || !seriesRef.current) return;
+
+    for (const line of trendLinesRef.current) {
+      chartRef.current.removeSeries(line);
+    }
+    trendLinesRef.current = [];
+
+    for (const line of horizontalLinesRef.current) {
+      seriesRef.current.removePriceLine(line);
+    }
+    horizontalLinesRef.current = [];
+    trendStartRef.current = null;
+    setDrawingMode("none");
+  };
+
   return (
     <section className="replay-shell" aria-live="polite">
       <header className="replay-header">
@@ -251,7 +451,7 @@ export default function ReplayChart() {
         <label>
           Instrument
           <select value={instrumentKey} onChange={(e) => setInstrumentKey(e.target.value)}>
-            {INSTRUMENTS.map((instrument) => (
+            {instruments.map((instrument) => (
               <option key={instrument.key} value={instrument.key}>
                 {instrument.label}
               </option>
@@ -314,7 +514,7 @@ export default function ReplayChart() {
           className="btn btn-ghost"
           onClick={() => {
             setIsPlaying(false);
-            setCursor(Math.min(25, candles.length));
+            setCursor(Math.min(15, candles.length));
           }}
           disabled={!candles.length}
         >
@@ -334,6 +534,49 @@ export default function ReplayChart() {
             ))}
           </select>
         </label>
+      </div>
+
+      <div className="analysis-row" role="group" aria-label="Indicators and drawing tools">
+        <button
+          type="button"
+          className={`chip-btn ${showSma ? "chip-active" : ""}`}
+          onClick={() => setShowSma((prev) => !prev)}
+        >
+          SMA 20
+        </button>
+        <button
+          type="button"
+          className={`chip-btn ${showEma ? "chip-active" : ""}`}
+          onClick={() => setShowEma((prev) => !prev)}
+        >
+          EMA 20
+        </button>
+        <button
+          type="button"
+          className={`chip-btn ${drawingMode === "trend" ? "chip-active" : ""}`}
+          onClick={() => {
+            trendStartRef.current = null;
+            setDrawingMode((prev) => (prev === "trend" ? "none" : "trend"));
+          }}
+        >
+          Trend Line
+        </button>
+        <button
+          type="button"
+          className={`chip-btn ${drawingMode === "hline" ? "chip-active" : ""}`}
+          onClick={() => {
+            trendStartRef.current = null;
+            setDrawingMode((prev) => (prev === "hline" ? "none" : "hline"));
+          }}
+        >
+          Horizontal Line
+        </button>
+        <button type="button" className="chip-btn" onClick={clearDrawings}>
+          Clear Drawings
+        </button>
+        <span className="tool-hint">
+          Mode: {drawingMode === "none" ? "Browse" : drawingMode === "trend" ? "Trend (2 clicks)" : "Horizontal (click)"}
+        </span>
       </div>
 
       <footer className="ticker-strip">

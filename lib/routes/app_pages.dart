@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:masterdaytrading/modules/chart_page/chart_view.dart';
+import 'package:masterdaytrading/modules/chart_page/chart_view_responsive.dart';
 import 'package:masterdaytrading/modules/home/home_binding.dart';
 import 'package:masterdaytrading/modules/home/home_view.dart';
 
@@ -14,12 +14,12 @@ class AppPages {
   static final pages = [
     GetPage(
       name: Routes.home,
-      page: () => HomeView(),
+      page: () => const HomeView(),
       binding: HomeBinding(),
     ),
     GetPage(
       name: Routes.chartPage,
-      page: () => ChartPage()
+      page: () => ChartPageResponsive()
     ),
   ];
 }

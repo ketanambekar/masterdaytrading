@@ -144,6 +144,39 @@ h1 {
   border: 1px solid var(--line);
 }
 
+.filter-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.filter-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.filter-grid select,
+.filter-grid input {
+  background: #141d27;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.48rem 0.6rem;
+}
+
+.error-banner {
+  margin: 0.8rem 0 0;
+  border: 1px solid rgba(255, 107, 107, 0.45);
+  border-radius: 10px;
+  background: rgba(255, 107, 107, 0.1);
+  color: #ff9c9c;
+  padding: 0.65rem 0.75rem;
+}
+
 .control-row {
   display: flex;
   gap: 0.75rem;
@@ -187,6 +220,10 @@ h1 {
     align-items: flex-start;
   }
 
+  .filter-grid {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+
   .chart-wrap {
     height: 420px;
   }
@@ -203,6 +240,10 @@ h1 {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.6rem;
+  }
+
+  .filter-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
   }
 
   .chart-wrap {

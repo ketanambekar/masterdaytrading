@@ -8,9 +8,26 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { getHistoricalCandles } from "@/lib/historicalData";
 
 const SPEEDS = [1, 2, 4, 8];
+const INSTRUMENTS = [
+  { label: "Reliance", key: "NSE_EQ|INE848E01016" },
+  { label: "TCS", key: "NSE_EQ|INE467B01029" },
+  { label: "Infosys", key: "NSE_EQ|INE009A01021" },
+  { label: "HDFC Bank", key: "NSE_EQ|INE040A01034" },
+];
+
+const UNIT_INTERVALS: Record<string, number[]> = {
+  minutes: [1, 3, 5, 15, 30, 60],
+  hours: [1, 2, 4],
+  days: [1],
+  weeks: [1],
+  months: [1],
+};
+
+function formatDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
 
 export default function ReplayChart() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -18,11 +35,24 @@ export default function ReplayChart() {
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const candles = useMemo(() => getHistoricalCandles(300), []);
+  const defaultToDate = useMemo(() => formatDate(new Date()), []);
+  const defaultFromDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 10);
+    return formatDate(d);
+  }, []);
 
-  const [cursor, setCursor] = useState(30);
+  const [candles, setCandles] = useState<CandlestickData<UTCTimestamp>[]>([]);
+  const [cursor, setCursor] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
+  const [instrumentKey, setInstrumentKey] = useState(INSTRUMENTS[0].key);
+  const [unit, setUnit] = useState("minutes");
+  const [interval, setIntervalValue] = useState(5);
+  const [fromDate, setFromDate] = useState(defaultFromDate);
+  const [toDate, setToDate] = useState(defaultToDate);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -76,6 +106,63 @@ export default function ReplayChart() {
     chartRef.current?.timeScale().fitContent();
   }, [candles, cursor]);
 
+  const fetchHistoricalData = async () => {
+    setLoading(true);
+    setError(null);
+    setIsPlaying(false);
+
+    try {
+      const query = new URLSearchParams({
+        instrumentKey,
+        unit,
+        interval: String(interval),
+        fromDate,
+        toDate,
+      });
+
+      const response = await fetch(`/api/candles?${query.toString()}`, {
+        method: "GET",
+      });
+
+      const payload = (await response.json()) as {
+        message?: string;
+        candles?: Array<{
+          time: number;
+          open: number;
+          high: number;
+          low: number;
+          close: number;
+        }>;
+      };
+
+      if (!response.ok || !payload.candles) {
+        throw new Error(payload.message ?? "Could not load historical candles");
+      }
+
+      const nextCandles = payload.candles.map((c) => ({
+        time: c.time as UTCTimestamp,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }));
+
+      setCandles(nextCandles);
+      setCursor(Math.min(25, nextCandles.length));
+    } catch (err) {
+      setCandles([]);
+      setCursor(0);
+      setError(err instanceof Error ? err.message : "Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchHistoricalData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -84,7 +171,7 @@ export default function ReplayChart() {
 
     if (!isPlaying) return;
 
-    const intervalMs = 1000 / speed;
+    const intervalMs = Math.max(150, 1000 / speed);
 
     timerRef.current = setInterval(() => {
       setCursor((prev) => {
@@ -106,6 +193,14 @@ export default function ReplayChart() {
 
   const latest = candles[Math.max(0, cursor - 1)] as CandlestickData<UTCTimestamp> | undefined;
 
+  const allowedIntervals = UNIT_INTERVALS[unit] ?? [1];
+
+  useEffect(() => {
+    if (!allowedIntervals.includes(interval)) {
+      setIntervalValue(allowedIntervals[0]);
+    }
+  }, [allowedIntervals, interval]);
+
   return (
     <section className="replay-shell">
       <header className="replay-header">
@@ -118,15 +213,66 @@ export default function ReplayChart() {
         </p>
       </header>
 
+      <div className="filter-grid">
+        <label>
+          Instrument
+          <select value={instrumentKey} onChange={(e) => setInstrumentKey(e.target.value)}>
+            {INSTRUMENTS.map((instrument) => (
+              <option key={instrument.key} value={instrument.key}>
+                {instrument.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Unit
+          <select value={unit} onChange={(e) => setUnit(e.target.value)}>
+            {Object.keys(UNIT_INTERVALS).map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Interval
+          <select value={interval} onChange={(e) => setIntervalValue(Number(e.target.value))}>
+            {allowedIntervals.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          From
+          <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+        </label>
+        <label>
+          To
+          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+        </label>
+        <button className="btn btn-primary" onClick={() => void fetchHistoricalData()} disabled={loading}>
+          {loading ? "Loading..." : "Fetch Historical"}
+        </button>
+      </div>
+
+      {error ? <p className="error-banner">{error}</p> : null}
+
       <div className="chart-wrap" ref={containerRef} />
 
       <div className="control-row">
-        <button className="btn btn-primary" onClick={() => setIsPlaying((p) => !p)}>
+        <button
+          className="btn btn-primary"
+          onClick={() => setIsPlaying((p) => !p)}
+          disabled={!candles.length}
+        >
           {isPlaying ? "Pause" : "Play"}
         </button>
         <button
           className="btn btn-ghost"
           onClick={() => setCursor((c) => Math.min(c + 1, candles.length))}
+          disabled={!candles.length}
         >
           Step +1
         </button>
@@ -134,8 +280,9 @@ export default function ReplayChart() {
           className="btn btn-ghost"
           onClick={() => {
             setIsPlaying(false);
-            setCursor(30);
+            setCursor(Math.min(25, candles.length));
           }}
+          disabled={!candles.length}
         >
           Reset
         </button>
